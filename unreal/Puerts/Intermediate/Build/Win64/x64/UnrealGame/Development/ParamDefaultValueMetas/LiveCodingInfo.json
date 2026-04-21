@@ -1,8 +1,0 @@
-{
-	"RemapUnityFiles": 
-	{
-		"Module.ParamDefaultValueMetas.cpp.obj": [
-			"ParamDefaultValueMetasModule.cpp.obj"
-		]
-	}
-}
