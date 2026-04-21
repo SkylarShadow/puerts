@@ -253,6 +253,11 @@ public:
         return GetDefault<UPuertsSetting>()->IgnoreStructListOnDTS;
     }
 
+	virtual puerts::FJsEnv* GetJsEnv()
+	{
+		return JsEnv.Get();
+	}
+
 private:
     TSharedPtr<PUERTS_NAMESPACE::FJsEnv> JsEnv;
 

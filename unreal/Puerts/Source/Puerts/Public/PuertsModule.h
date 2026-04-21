@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Tencent is pleased to support the open source community by making Puerts available.
  * Copyright (C) 2020 Tencent.  All rights reserved.
  * Puerts is licensed under the BSD 3-Clause License, except for the third-party components listed in the file 'LICENSE' which may
@@ -13,6 +13,7 @@
 
 #include "Modules/ModuleManager.h"
 #include "CoreMinimal.h"
+#include <JsEnv.h> //提供外部接口访问JsEnv
 
 class PUERTS_API IPuertsModule : public IModuleInterface
 {
@@ -49,6 +50,9 @@ public:
     virtual const TArray<FString>& GetIgnoreClassListOnDTS() = 0;
 
     virtual const TArray<FString>& GetIgnoreStructListOnDTS() = 0;
+
+    //提供外部接口访问JsEnv
+	virtual puerts::FJsEnv* GetJsEnv() = 0;
 
 #if WITH_EDITOR
     virtual bool IsInPIE() = 0;
