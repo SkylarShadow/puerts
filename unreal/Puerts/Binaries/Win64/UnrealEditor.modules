@@ -1,0 +1,12 @@
+{
+	"BuildId": "33043543",
+	"Modules": 
+	{
+		"DeclarationGenerator": "UnrealEditor-DeclarationGenerator.dll",
+		"JsEnv": "UnrealEditor-JsEnv.dll",
+		"ParamDefaultValueMetas": "UnrealEditor-ParamDefaultValueMetas.dll",
+		"Puerts": "UnrealEditor-Puerts.dll",
+		"PuertsEditor": "UnrealEditor-PuertsEditor.dll",
+		"WasmCore": "UnrealEditor-WasmCore.dll"
+	}
+}

@@ -1,0 +1,10 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "d:\\tempprjs\\myproject\\plugins\\puerts\\source\\wasmcore\\thirdpart\\wasm3\\m3_exec.c",
+        "ProvidedModule": "",
+        "Includes": [
+            "d:\\tempprjs\\myproject\\plugins\\puerts\\intermediate\\build\\win64\\x64\\unrealgame\\development\\wasmcore\\definitions.c.h"
+        ]
+    }
+}
