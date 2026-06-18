@@ -261,7 +261,7 @@ public:
 private:
     TSharedPtr<PUERTS_NAMESPACE::FJsEnv> JsEnv;
 
-    bool Enabled = false;
+    bool Enabled = true; // 为了开启热刷
 
     bool WatchEnabled = true;
 
