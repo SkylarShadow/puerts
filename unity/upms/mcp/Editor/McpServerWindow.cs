@@ -31,7 +31,7 @@ namespace PuertsMcp.Editor
         // but resets when the Editor is closed.
         private const string SessionKeyWasRunning = "PuertsMcp_WasRunning";
 
-        [MenuItem("Puerts.AI/MCP Server")]
+        [MenuItem("PuertsEditorAssistant/MCP Server")]
         public static void ShowWindow()
         {
             var window = GetWindow<McpServerWindow>("MCP Server");
@@ -210,7 +210,7 @@ namespace PuertsMcp.Editor
             {
                 EditorGUILayout.Space(5);
                 EditorGUILayout.LabelField("Endpoint", EditorStyles.miniLabel);
-                var endpoint = $"http://127.0.0.1:{s_activePort}/sse";
+                var endpoint = $"http://127.0.0.1:{s_activePort}/mcp";
                 EditorGUILayout.SelectableLabel(endpoint, EditorStyles.textField, GUILayout.Height(18));
             }
 
