@@ -860,8 +860,8 @@ pesapi_value pesapi_eval(pesapi_env env, const uint8_t* code, size_t code_size, 
     auto rt = JS_GetRuntime(ctx);
     eastl::vector<char, eastl::allocator_malloc> buff;
     buff.reserve(code_size + 1);
-    memcpy(buff.data(), code, code_size);
-    buff.data()[code_size] = '\0'; // 尽管JS_Eval传了长度，但如果代码没有以\0结尾，JS_Eval会出现随机错误
+    buff.insert(buff.end(), code, code + code_size);
+    buff.push_back('\0'); // 尽管JS_Eval传了长度，但如果代码没有以\0结尾，JS_Eval会出现随机错误
     JS_UpdateStackTop(rt);
     JSValue retOrEx = JS_Eval(ctx, (const char *)buff.data(), code_size, path, JS_EVAL_TYPE_GLOBAL);
     if (JS_IsException(retOrEx)) {
@@ -887,13 +887,17 @@ pesapi_value pesapi_global(pesapi_env env)
 const void* pesapi_get_env_private(pesapi_env env)
 {
     auto ctx = qjsContextFromPesapiEnv(env);
-    return CppObjectMapper::Get(ctx)->GetEnvPrivate();
+    auto mapper = CppObjectMapper::Get(ctx);
+    if (!mapper) return nullptr;
+    return mapper->GetEnvPrivate();
 }
 
 void pesapi_set_env_private(pesapi_env env, const void* ptr)
 {
     auto ctx = qjsContextFromPesapiEnv(env);
-    CppObjectMapper::Get(ctx)->SetEnvPrivate(ptr);
+    auto mapper = CppObjectMapper::Get(ctx);
+    if (!mapper) return;
+    mapper->SetEnvPrivate(ptr);
 }
 
 void pesapi_set_registry(pesapi_env env, pesapi_registry registry)
