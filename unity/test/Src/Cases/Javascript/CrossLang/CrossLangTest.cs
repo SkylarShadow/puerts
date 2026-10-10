@@ -122,6 +122,27 @@ namespace Puerts.UnitTest
             return v1 + ":" + v2 + ":" + v3;
         }
     }
+    [UnityEngine.Scripting.Preserve]
+    public struct TestStructOverrideToString
+    {
+        public float x;
+        public float y;
+        public float z;
+
+        [UnityEngine.Scripting.Preserve]
+        public TestStructOverrideToString(float x, float y, float z)
+        {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+
+        [UnityEngine.Scripting.Preserve]
+        public override string ToString()
+        {
+            return x + "," + y + "," + z;
+        }
+    }
     [StructLayout(LayoutKind.Sequential)]
     [UnityEngine.Scripting.Preserve]
     public unsafe struct TestUnsafeStruct
@@ -1722,6 +1743,21 @@ namespace Puerts.UnitTest
             Assert.AreEqual("5345:3214:fqpziq", res);
         }
         [Test]
+        public void StructOverrideToStringViaObjectTest()
+        {
+            // JS toString is bound to System.Object.ToString; virtual dispatch to a struct override
+            // must pass an unboxed this, otherwise il2cpp reads the object header as fields
+            var jsEnv = UnitTestEnv.GetEnv();
+            var res = jsEnv.Eval<string>(@"
+                 (function() {
+                     const s = new CS.Puerts.UnitTest.TestStructOverrideToString(1, 2, 3);
+                     const s2 = new CS.Puerts.UnitTest.TestStruct2(5345, 3214, 'fqpziq');
+                     return ['' + s, s.toString(), `${s}`, '' + s2, s2.toString()].join('|');
+                 })()
+            ");
+            Assert.AreEqual("1,2,3|1,2,3|1,2,3|5345:3214:fqpziq|5345:3214:fqpziq", res);
+        }
+        [Test]
         public void NullableNativeStructInstanceTest()
         {
             var jsEnv = UnitTestEnv.GetEnv();
@@ -3076,6 +3112,65 @@ __PDUOTF;");
                     AssertAndPrint('StringRefParam', $unref(p) == 'abc_cs');
                 })()
             ");
+        }
+
+
+        public void CreateJsObjects()
+        {
+            var jsEnv = UnitTestEnv.GetEnv();
+            jsEnv.Eval("global.__weak_ref_arr = []");
+
+            for (int i = 0; i < 10; i++)
+            {
+                jsEnv.Eval<ScriptObject>(@"
+                var test_val_weak = new WeakRef({a:1});
+                global.__weak_ref_arr.push(test_val_weak)
+                test_val_weak.deref();");
+            }
+        }
+
+        [Test]
+        public void JsObjectCollectTest()
+        {
+            CreateJsObjects();
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
+            var jsEnv = UnitTestEnv.GetEnv();
+            jsEnv.Tick();
+            jsEnv.Backend.LowMemoryNotification();
+
+            Assert.AreNotEqual(0, jsEnv.Eval<int>("global.__weak_ref_arr.filter(e => e.deref() === undefined).length"));
+        }
+
+        public void CreateDelegate()
+        {
+            var jsEnv = UnitTestEnv.GetEnv();
+            jsEnv.Eval("global.__weak_ref_arr = []");
+
+            for (int i = 0; i < 10; i++)
+            {
+                jsEnv.Eval<Action>(@"
+                var test_val_weak = new WeakRef(() => {});
+                global.__weak_ref_arr.push(test_val_weak)
+                test_val_weak.deref();");
+            }
+        }
+
+        [Test]
+        public void DelegateCollectTest()
+        {
+            CreateDelegate();
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
+            var jsEnv = UnitTestEnv.GetEnv();
+            jsEnv.Tick();
+            jsEnv.Backend.LowMemoryNotification();
+
+            Assert.AreNotEqual(0, jsEnv.Eval<int>("global.__weak_ref_arr.filter(e => e.deref() === undefined).length"));
         }
 
     }
