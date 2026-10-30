@@ -653,6 +653,10 @@ namespace Puerts.UnitTest
             set { _arrayBufferTestProp = value; }
         }
         public static Puerts.ArrayBuffer arrayBufferTestFieldStatic = null;
+        public static void ArrayBufferTestOutValue(out Puerts.ArrayBuffer value)
+        {
+            value = null;
+        }
         protected static Puerts.ArrayBuffer _arrayBufferTestPropStatic = null;
         public static Puerts.ArrayBuffer arrayBufferTestPropStatic
         {
@@ -1993,6 +1997,7 @@ namespace Puerts.UnitTest
             GC.WaitForPendingFinalizers();
             GC.Collect();
 
+            // il2cpp下有概率失败（WaitForPendingFinalizers 提前返回，见 TestObjectFieldRefAStruct 的说明）
             Assert.AreEqual(objCount, TestGC.ObjCount);
             Assert.True(objCount > 0);
 
@@ -2007,6 +2012,7 @@ namespace Puerts.UnitTest
             GC.WaitForPendingFinalizers();
             GC.Collect();
 
+            // il2cpp下有概率失败（WaitForPendingFinalizers 提前返回，见 TestObjectFieldRefAStruct 的说明）
             Assert.AreEqual(0, TestGC.ObjCount);
 
             jsEnv.Dispose();
@@ -2042,6 +2048,7 @@ namespace Puerts.UnitTest
             GC.WaitForPendingFinalizers();
             GC.Collect();
 
+            // il2cpp下有概率失败（WaitForPendingFinalizers 提前返回，见 TestObjectFieldRefAStruct 的说明）
             Assert.AreEqual(objCount, TestGC.ObjCount);
             Assert.True(objCount > 0);
 
@@ -2056,6 +2063,7 @@ namespace Puerts.UnitTest
             GC.WaitForPendingFinalizers();
             GC.Collect();
 
+            // il2cpp下有概率失败（WaitForPendingFinalizers 提前返回，见 TestObjectFieldRefAStruct 的说明）
             Assert.AreEqual(0, TestGC.ObjCount);
 
             jsEnv.Dispose();
@@ -2727,6 +2735,16 @@ __PDUOTF;");
 
         // gc相关测试在webgl下不稳定，先去掉
 #if !UNITY_WEBGL || UNITY_EDITOR
+        // il2cpp下有概率失败，原因不是puerts泄漏，而是GC.WaitForPendingFinalizers()的语义：
+        // il2cpp跑的是bdwgc，bdwgc/finalize.c 的 GC_invoke_finalizers 是"先把对象出队，再执行它的终结器"，
+        // 而 libil2cpp/gc/GarbageCollector.cpp 的 WaitForPendingFinalizers 一进来就判断队列是否为空（GC_should_invoke_finalizers），
+        // 空就直接return。同时 BoehmGC.cpp 设了 GC_set_finalizer_notifier，GC.Collect() 结束时终结器线程已被唤醒并与主线程并行执行，
+        // 于是"最后一个对象已被出队、但它的终结器还没跑完"这个窗口里 WaitForPendingFinalizers() 会提前返回。
+        // 此时读到的是还没被 -- 的计数，本用例的表现是最后两个断言偶发失败：
+        //   "FieldClass2 expect equals but failed: got 0 == 1!"（或 FieldClass，取决于终结队列里谁排在最后）
+        // 因为只差这一个对象的终结器，重跑一次基本就能过；机器核少/调度抖动大时概率更高（CI 的 macos 上出现过）。
+        // 要真消除只能改成轮询等待计数达到期望值（超时后再断言），这里保持原样，仅说明原因。
+        // 其它"WaitForPendingFinalizers 之后立刻断言终结器计数"的用例（TestJsGC、TestJsStructGC、Lua/Python 的 GC 用例）同理。
         [Test]
         public void TestObjectFieldRefAStruct()
         {
@@ -3173,5 +3191,40 @@ __PDUOTF;");
             Assert.AreNotEqual(0, jsEnv.Eval<int>("global.__weak_ref_arr.filter(e => e.deref() === undefined).length"));
         }
 
+        [Test]
+        public void ValueTypePrototypeEquals()
+        {
+            var jsEnv = UnitTestEnv.GetEnv();
+            var result = jsEnv.Eval<bool>(@"
+                (function() {
+                    const TestStruct = CS.Puerts.UnitTest.TestStruct;
+                    const valueTypeEquals = CS.System.ValueType.prototype.Equals;
+                    const s = new TestStruct(123);
+                    return valueTypeEquals.call(s, s);
+                })()
+            ");
+
+            Assert.True(result);
+        }
+
+        [Test]
+        public void ArrayBufferInstanceTestNull()
+        {
+            var jsEnv = UnitTestEnv.GetEnv();
+            jsEnv.Eval(@"
+                (function() {
+                    const TestHelper = CS.Puerts.UnitTest.TestHelper;
+                    const assertAndPrint = TestHelper.AssertAndPrint.bind(TestHelper);
+
+                    TestHelper.arrayBufferTestFieldStatic = null;
+                    assertAndPrint('null ArrayBuffer', TestHelper.arrayBufferTestFieldStatic, null);
+
+                    var o = puerts.$ref();
+                    TestHelper.ArrayBufferTestOutValue(o);
+                    assertAndPrint('null ArrayBuffer out value', puerts.$unref(o), null);
+                })();
+            ");
+            jsEnv.Tick();
+        }
     }
 }
